@@ -255,13 +255,25 @@
     </aside>
   </div>
   <script>
-    const people = ['Mie','Varvara', 'Thomas', 'Fredrik', 'Mikael', 'Linda', 'Malin', 'Jennie', 'Peter', 'Susanna', 'Tommy', 'Erik'];
     const scheduleBody = document.getElementById('scheduleBody');
     const swapSelectA = document.getElementById('swapSelectA');
     const swapSelectB = document.getElementById('swapSelectB');
     const swapButton = document.getElementById('swapButton');
     const swapResult = document.getElementById('swapResult');
+    let people = [];
     let schedule = [];
+
+    async function loadNames() {
+      try {
+        const response = await fetch('names.txt');
+        if (!response.ok) throw new Error('Failed to fetch names.txt');
+        const text = await response.text();
+        return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      } catch (error) {
+        console.warn('Could not load names.txt:', error);
+        return [];
+      }
+    }
 
     function getWeekNumber(date) {
       const target = new Date(date.valueOf());
@@ -326,18 +338,8 @@
       });
       const defaultA = swapSelectA.options[0]?.value;
       const defaultB = swapSelectB.options[1]?.value || swapSelectB.options[0]?.value;
-      if (selectedA) {
-        const keepA = Array.from(swapSelectA.options).find(opt => opt.value === selectedA);
-        swapSelectA.value = keepA ? selectedA : defaultA;
-      } else {
-        swapSelectA.value = defaultA;
-      }
-      if (selectedB) {
-        const keepB = Array.from(swapSelectB.options).find(opt => opt.value === selectedB);
-        swapSelectB.value = keepB ? selectedB : defaultB;
-      } else {
-        swapSelectB.value = defaultB;
-      }
+      swapSelectA.value = selectedA && Array.from(swapSelectA.options).some(opt => opt.value === selectedA) ? selectedA : defaultA;
+      swapSelectB.value = selectedB && Array.from(swapSelectB.options).some(opt => opt.value === selectedB) ? selectedB : defaultB;
     }
 
     function updateSwapPreview() {
@@ -364,6 +366,10 @@
       }
       const entryA = schedule[indexA];
       const entryB = schedule[indexB];
+      if (!entryA || !entryB) {
+        updateSwapPreview();
+        return;
+      }
       const tempName = entryA.name;
       entryA.name = entryB.name;
       entryB.name = tempName;
@@ -379,10 +385,15 @@
     swapSelectA.addEventListener('change', updateSwapPreview);
     swapSelectB.addEventListener('change', updateSwapPreview);
 
-    initializeSchedule();
-    buildSchedule();
-    updateDropdown();
-    updateSwapPreview();
+    async function initializeApp() {
+      people = await loadNames();
+      initializeSchedule();
+      buildSchedule();
+      updateDropdown();
+      updateSwapPreview();
+    }
+
+    initializeApp();
   </script>
 </body>
 </html>
