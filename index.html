@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fika Week Scheduler</title>
+  <style>
+    :root {
+      --bg: #eef2ff;
+      --card: #ffffff;
+      --text: #111827;
+      --accent: #6366f1;
+      --accent-dark: #4338ca;
+      --highlight: #fef3c7;
+      --highlight-border: #fbbf24;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Arial, sans-serif;
+      background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+    .page {
+      width: 100%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: 1.7fr 1fr;
+      gap: 24px;
+    }
+    .panel {
+      background: var(--card);
+      border-radius: 28px;
+      box-shadow: 0 30px 60px rgba(15, 23, 42, 0.12);
+      padding: 28px;
+    }
+    .hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(2rem, 2.5vw, 3rem);
+      line-height: 1.05;
+    }
+    .hero .buns {
+      font-size: 2.5rem;
+      transform: rotate(-8deg);
+      user-select: none;
+    }
+    .description {
+      margin: 18px 0 0;
+      font-size: 1rem;
+      color: #475569;
+      line-height: 1.7;
+    }
+    .schedule-card {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 24px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+    .schedule-card header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .schedule-card header h2 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+    .schedule-card table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .schedule-card th,
+    .schedule-card td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .schedule-card th {
+      font-size: 0.95rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .schedule-card tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .schedule-card .name {
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .schedule-card .current {
+      text-decoration: line-through;
+      color: #64748b;
+      border-left: 5px solid #cbd5e1;
+      background: transparent;
+    }
+    .schedule-card .next-fika {
+      background: linear-gradient(90deg, rgba(251,191,36,0.18), rgba(251,191,36,0.05));
+      border-left: 5px solid #f59e0b;
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+    .schedule-card .current td {
+      color: #64748b;
+      font-weight: 600;
+    }
+    .schedule-card .next-fika td {
+      color: #1e293b;
+      font-weight: 600;
+    }
+    .schedule-card .bun {
+      margin-right: 8px;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.15); }
+      50% { box-shadow: 0 0 0 14px rgba(59,130,246,0.05); }
+    }
+    .notes {
+      margin-top: 16px;
+      font-size: 0.95rem;
+      color: #475569;
+    }
+    .swap-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .swap-panel h2 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+    .swap-panel p {
+      margin: 0;
+      color: #475569;
+      line-height: 1.7;
+    }
+    .swap-panel .card {
+      border-radius: 24px;
+      background: #eef2ff;
+      padding: 20px;
+      border: 1px solid #c7d2fe;
+    }
+    .swap-panel label {
+      display: block;
+      margin-bottom: 8px;
+      color: #334155;
+      font-weight: 600;
+    }
+    .swap-panel select,
+    .swap-panel button {
+      width: 100%;
+      border-radius: 14px;
+      font-size: 1rem;
+    }
+    .swap-panel select {
+      padding: 14px 12px;
+      border: 1px solid #c7d2fe;
+      background: #ffffff;
+      color: #0f172a;
+    }
+    .swap-panel button {
+      border: none;
+      padding: 14px 16px;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .swap-panel button:hover {
+      background: var(--accent-dark);
+    }
+    .swap-result {
+      min-height: 58px;
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      color: #1f2937;
+      line-height: 1.6;
+    }
+    .footer {
+      margin-top: 18px;
+      font-size: 0.95rem;
+      color: #475569;
+    }
+    @media (max-width: 960px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+      .hero {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel">
+      <div class="hero">
+        <div>
+          <h1>🥐 Fika Week Scheduler 🥯</h1>
+          <p class="description">This view shows who is the next fika responsible.</p>
+        </div>
+        <div class="buns">🥐🥯🥐</div>
+      </div>
+
+      <div class="schedule-card">
+        <header>
+          <h2>Team schedule</h2>
+          <span>12 names</span>
+        </header>
+        <table>
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Name</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+        <p class="notes">The schedule shows the current Tuesday fika assignment first, and the next fika week is highlighted so you always see who is up next.</p>
+      </div>
+    </section>
+
+    <aside class="swap-panel panel">
+      <div>
+        <h2>Swap a week</h2>
+        <p>Pick two people below to swap their fika weeks.</p>
+      </div>
+      <div class="card">
+        <label for="swapSelectA">Swap</label>
+        <select id="swapSelectA"></select>
+        <label for="swapSelectB" style="margin-top:12px; display:block;">With</label>
+        <select id="swapSelectB"></select>
+        <button id="swapButton">Swap</button>
+        <div id="swapResult" class="swap-result">Pick two names to swap.</div>
+      </div>
+      <div class="footer">Use the swap panel to actually swap this week's assignment with a future fika week.</div>
+    </aside>
+  </div>
+  <script>
+    const people = ['Erik', 'Mie', 'Varvara', 'Thomas', 'Fredrik', 'Mikael', 'Linda', 'Malin', 'Jennie', 'Peter', 'Susanna', 'Tommy'];
+    const scheduleBody = document.getElementById('scheduleBody');
+    const swapSelectA = document.getElementById('swapSelectA');
+    const swapSelectB = document.getElementById('swapSelectB');
+    const swapButton = document.getElementById('swapButton');
+    const swapResult = document.getElementById('swapResult');
+    let schedule = [];
+
+    function getWeekNumber(date) {
+      const target = new Date(date.valueOf());
+      const dayNr = (date.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNr + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+      }
+      return 1 + Math.round((firstThursday - target) / (7 * 24 * 60 * 60 * 1000));
+    }
+
+    function currentWeek() {
+      return getWeekNumber(new Date());
+    }
+
+    function initializeSchedule() {
+      const startWeek = currentWeek();
+      schedule = people.map((name, offset) => ({
+        week: startWeek + offset,
+        name,
+      }));
+    }
+
+    function buildSchedule() {
+      scheduleBody.innerHTML = '';
+      schedule.forEach((entry, index) => {
+        const row = document.createElement('tr');
+        if (index === 0) {
+          row.classList.add('current');
+        } else if (index === 1) {
+          row.classList.add('next-fika');
+        }
+
+        const weekCell = document.createElement('td');
+        weekCell.innerHTML = `${index === 1 ? '<span class="bun">🥐</span>' : ''}w${entry.week}`;
+
+        const nameCell = document.createElement('td');
+        nameCell.className = 'name';
+        nameCell.textContent = entry.name;
+
+        row.appendChild(weekCell);
+        row.appendChild(nameCell);
+        scheduleBody.appendChild(row);
+      });
+    }
+
+    function updateDropdown() {
+      const selectedA = swapSelectA.value;
+      const selectedB = swapSelectB.value;
+      swapSelectA.innerHTML = '';
+      swapSelectB.innerHTML = '';
+      schedule.slice(1).forEach((entry, offset) => {
+        const index = offset + 1;
+        const optionA = document.createElement('option');
+        optionA.value = String(index);
+        optionA.textContent = `${entry.name} — w${entry.week}`;
+        const optionB = optionA.cloneNode(true);
+        swapSelectA.appendChild(optionA);
+        swapSelectB.appendChild(optionB);
+      });
+      const defaultA = swapSelectA.options[0]?.value;
+      const defaultB = swapSelectB.options[1]?.value || swapSelectB.options[0]?.value;
+      if (selectedA) {
+        const keepA = Array.from(swapSelectA.options).find(opt => opt.value === selectedA);
+        swapSelectA.value = keepA ? selectedA : defaultA;
+      } else {
+        swapSelectA.value = defaultA;
+      }
+      if (selectedB) {
+        const keepB = Array.from(swapSelectB.options).find(opt => opt.value === selectedB);
+        swapSelectB.value = keepB ? selectedB : defaultB;
+      } else {
+        swapSelectB.value = defaultB;
+      }
+    }
+
+    function updateSwapPreview() {
+      const indexA = Number(swapSelectA.value);
+      const indexB = Number(swapSelectB.value);
+      if (Number.isNaN(indexA) || Number.isNaN(indexB)) {
+        swapResult.textContent = 'Pick two names to swap.';
+        return;
+      }
+      if (indexA === indexB) {
+        swapResult.textContent = 'Choose two different people to swap.';
+        return;
+      }
+      const entries = [schedule[indexA], schedule[indexB]].sort((a, b) => a.week - b.week);
+      swapResult.textContent = `Swap ${entries[0].name} (w${entries[0].week}) with ${entries[1].name} (w${entries[1].week}).`;
+    }
+
+    function swapThisWeek() {
+      const indexA = Number(swapSelectA.value);
+      const indexB = Number(swapSelectB.value);
+      if (Number.isNaN(indexA) || Number.isNaN(indexB) || indexA === indexB) {
+        updateSwapPreview();
+        return;
+      }
+      const entryA = schedule[indexA];
+      const entryB = schedule[indexB];
+      const tempName = entryA.name;
+      entryA.name = entryB.name;
+      entryB.name = tempName;
+      buildSchedule();
+      updateDropdown();
+      swapSelectA.value = String(indexA);
+      swapSelectB.value = String(indexB);
+      const entries = [entryA, entryB].sort((a, b) => a.week - b.week);
+      swapResult.textContent = `Swapped ${entries[0].name} (w${entries[0].week}) with ${entries[1].name} (w${entries[1].week}).`;
+    }
+
+    swapButton.addEventListener('click', swapThisWeek);
+    swapSelectA.addEventListener('change', updateSwapPreview);
+    swapSelectB.addEventListener('change', updateSwapPreview);
+
+    initializeSchedule();
+    buildSchedule();
+    updateDropdown();
+    updateSwapPreview();
+  </script>
+</body>
+</html>
