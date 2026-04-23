@@ -183,6 +183,17 @@
     .swap-panel button:hover {
       background: var(--accent-dark);
     }
+    .swap-panel .file-input {
+      margin-top: 10px;
+    }
+    .swap-panel .file-input input {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #c7d2fe;
+      border-radius: 14px;
+      background: #ffffff;
+    }
     .swap-result {
       min-height: 58px;
       margin-top: 12px;
@@ -251,17 +262,43 @@
         <button id="swapButton">Swap</button>
         <div id="swapResult" class="swap-result">Pick two names to swap.</div>
       </div>
+      <div class="card">
+        <h3 style="margin: 0 0 10px 0; font-size: 1.1rem;">Persistence</h3>
+        <button id="exportButton">Export Schedule</button>
+        <div class="file-input">
+          <label for="importInput">Import Schedule</label>
+          <input type="file" id="importInput" accept=".json">
+        </div>
+        <div id="importResult" class="swap-result">Import a schedule JSON file.</div>
+      </div>
       <div class="footer">Use the swap panel to actually swap this week's assignment with a future fika week.</div>
     </aside>
   </div>
   <script>
+    let people = [];
+    let schedule = [];
+    let namesOrder = [];
+
     const scheduleBody = document.getElementById('scheduleBody');
     const swapSelectA = document.getElementById('swapSelectA');
     const swapSelectB = document.getElementById('swapSelectB');
     const swapButton = document.getElementById('swapButton');
     const swapResult = document.getElementById('swapResult');
-    let people = [];
-    let schedule = [];
+    const exportButton = document.getElementById('exportButton');
+    const importInput = document.getElementById('importInput');
+    const importResult = document.getElementById('importResult');
+
+    async function loadNames() {
+      try {
+        const response = await fetch('names.txt');
+        if (!response.ok) throw new Error('Failed to fetch names.txt');
+        const text = await response.text();
+        return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      } catch (error) {
+        console.warn('Could not load names.txt:', error);
+        return [];
+      }
+    }
 
     async function loadNames() {
       try {
@@ -292,11 +329,43 @@
     }
 
     function initializeSchedule() {
-      const startWeek = currentWeek();
-      schedule = people.map((name, offset) => ({
+      const today = new Date();
+      let startWeek = currentWeek();
+      if (today.getDay() === 3) { // Wednesday
+        startWeek += 1;
+      }
+
+      const saved = localStorage.getItem('fikaSchedule');
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.namesOrder && Array.isArray(data.namesOrder) && data.namesOrder.length > 0) {
+            let savedStart = data.startWeek;
+            namesOrder = data.namesOrder.slice();
+            const diff = startWeek - savedStart;
+            if (diff > 0) {
+              namesOrder = [...namesOrder.slice(diff), ...namesOrder.slice(0, diff)];
+            } else if (diff < 0) {
+              namesOrder = [...namesOrder.slice(namesOrder.length + diff), ...namesOrder.slice(0, namesOrder.length + diff)];
+            }
+          } else {
+            namesOrder = people.slice();
+          }
+        } catch (e) {
+          console.warn('Failed to load saved schedule:', e);
+          namesOrder = people.slice();
+        }
+      } else {
+        namesOrder = people.slice();
+      }
+
+      schedule = namesOrder.map((name, offset) => ({
         week: startWeek + offset,
         name,
       }));
+
+      // Save the current state
+      localStorage.setItem('fikaSchedule', JSON.stringify({ startWeek, namesOrder }));
     }
 
     function buildSchedule() {
@@ -373,17 +442,62 @@
       const tempName = entryA.name;
       entryA.name = entryB.name;
       entryB.name = tempName;
+      // Update namesOrder
+      const tempOrder = namesOrder[indexA];
+      namesOrder[indexA] = namesOrder[indexB];
+      namesOrder[indexB] = tempOrder;
       buildSchedule();
       updateDropdown();
       swapSelectA.value = String(indexA);
       swapSelectB.value = String(indexB);
       const entries = [entryA, entryB].sort((a, b) => a.week - b.week);
       swapResult.textContent = `Swapped ${entries[0].name} (w${entries[0].week}) with ${entries[1].name} (w${entries[1].week}).`;
+      // Save updated schedule
+      const startWeek = schedule[0].week;
+      localStorage.setItem('fikaSchedule', JSON.stringify({ startWeek, namesOrder }));
     }
 
     swapButton.addEventListener('click', swapThisWeek);
     swapSelectA.addEventListener('change', updateSwapPreview);
     swapSelectB.addEventListener('change', updateSwapPreview);
+    exportButton.addEventListener('click', exportSchedule);
+    importInput.addEventListener('change', importSchedule);
+
+    function exportSchedule() {
+      const startWeek = schedule[0].week;
+      const data = { startWeek, namesOrder };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'schedule.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      importResult.textContent = 'Schedule exported as schedule.json';
+    }
+
+    function importSchedule(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.namesOrder && Array.isArray(data.namesOrder)) {
+            // Save to localStorage
+            localStorage.setItem('fikaSchedule', JSON.stringify(data));
+            // Reload the app
+            initializeApp();
+            importResult.textContent = 'Schedule imported successfully.';
+          } else {
+            importResult.textContent = 'Invalid schedule file.';
+          }
+        } catch (err) {
+          importResult.textContent = 'Error reading file.';
+        }
+      };
+      reader.readAsText(file);
+    }
 
     async function initializeApp() {
       people = await loadNames();
